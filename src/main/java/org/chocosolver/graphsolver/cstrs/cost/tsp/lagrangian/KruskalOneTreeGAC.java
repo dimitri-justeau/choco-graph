@@ -25,15 +25,15 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.chocosolver.graphsolver.cstrs.cost.tsp.lagrangianRelaxation;
+package org.chocosolver.graphsolver.cstrs.cost.tsp.lagrangian;
 
 import org.chocosolver.graphsolver.cstrs.cost.GraphLagrangianRelaxation;
-import org.chocosolver.graphsolver.cstrs.cost.trees.lagrangianRelaxation.KruskalMSTFinder;
+import org.chocosolver.graphsolver.cstrs.cost.trees.lagrangian.KruskalMSTFinder;
 import org.chocosolver.solver.exception.ContradictionException;
 import org.chocosolver.util.objects.graphs.UndirectedGraph;
 import org.chocosolver.util.objects.setDataStructures.ISet;
 
-public class KruskalOneTree_GAC extends KruskalMSTFinder {
+public class KruskalOneTreeGAC extends KruskalMSTFinder {
 
 	//***********************************************************************************
 	// VARIABLES
@@ -48,7 +48,7 @@ public class KruskalOneTree_GAC extends KruskalMSTFinder {
 	// CONSTRUCTORS
 	//***********************************************************************************
 
-	public KruskalOneTree_GAC(int nbNodes, GraphLagrangianRelaxation propagator) {
+	public KruskalOneTreeGAC(int nbNodes, GraphLagrangianRelaxation propagator) {
 		super(nbNodes, propagator);
 		map = new int[n][n];
 		marginalCosts = new double[n][n];
@@ -119,10 +119,8 @@ public class KruskalOneTree_GAC extends KruskalMSTFinder {
 	protected void pruning(int fi, double delta) throws ContradictionException {
 		ISet nei = g.getNeighOf(0);
 		for (int i : nei) {
-			if (i != min1 && i != min2) {
-				if (distMatrix[0][i] - distMatrix[0][min2] > delta) {
-					propHK.remove(0, i);
-				}
+			if (i != min1 && i != min2 && distMatrix[0][i] - distMatrix[0][min2] > delta) {
+				propHK.remove(0, i);
 			}
 		}
 
@@ -183,10 +181,8 @@ public class KruskalOneTree_GAC extends KruskalMSTFinder {
 		ccTree.addNode(newNode);
 		ccTEdgeCost[newNode] = propHK.getMinArcVal();
 		for (int i : ccTree.getNodes()) {
-			if (ccTree.getPredOf(i).isEmpty()) {
-				if (i != cctRoot) {
-					ccTree.addArc(cctRoot, i);
-				}
+			if (i != cctRoot && ccTree.getPredOf(i).isEmpty()) {
+				ccTree.addArc(cctRoot, i);
 			}
 		}
 		return true;
@@ -206,10 +202,10 @@ public class KruskalOneTree_GAC extends KruskalMSTFinder {
 			from = arc / n;
 			to = arc % n;
 			if (from != 0 && to != 0) {
-				rFrom = FIND(from);
-				rTo = FIND(to);
+				rFrom = findUF(from);
+				rTo = findUF(to);
 				if (rFrom != rTo) {
-					LINK(rFrom, rTo);
+					linkUF(rFrom, rTo);
 					Tree.addEdge(from, to);
 					updateCCTree(rFrom, rTo, val);
 					treeCost += costs[arc];
@@ -235,10 +231,10 @@ public class KruskalOneTree_GAC extends KruskalMSTFinder {
 			}
 			from = sortedArcs[idx] / n;
 			to = sortedArcs[idx] % n;
-			rFrom = FIND(from);
-			rTo = FIND(to);
+			rFrom = findUF(from);
+			rTo = findUF(to);
 			if (rFrom != rTo) {
-				LINK(rFrom, rTo);
+				linkUF(rFrom, rTo);
 				Tree.addEdge(from, to);
 				cost = costs[sortedArcs[idx]];
 				updateCCTree(rFrom, rTo, cost);

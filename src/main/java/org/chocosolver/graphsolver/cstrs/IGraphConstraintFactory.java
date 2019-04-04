@@ -40,9 +40,9 @@ import org.chocosolver.graphsolver.cstrs.connectivity.PropSizeMinCC;
 import org.chocosolver.graphsolver.cstrs.connectivity.PropSizeMaxCC;
 import org.chocosolver.graphsolver.cstrs.cost.trees.PropMaxDegVarTree;
 import org.chocosolver.graphsolver.cstrs.cost.trees.PropTreeCostSimple;
-import org.chocosolver.graphsolver.cstrs.cost.trees.lagrangianRelaxation.PropLagr_DCMST_generic;
+import org.chocosolver.graphsolver.cstrs.cost.trees.lagrangian.PropGenericLagrDCMST;
 import org.chocosolver.graphsolver.cstrs.cost.tsp.PropCycleCostSimple;
-import org.chocosolver.graphsolver.cstrs.cost.tsp.lagrangianRelaxation.PropLagr_OneTree;
+import org.chocosolver.graphsolver.cstrs.cost.tsp.lagrangian.PropLagrOneTree;
 import org.chocosolver.graphsolver.cstrs.cycles.*;
 import org.chocosolver.graphsolver.cstrs.degree.*;
 import org.chocosolver.graphsolver.cstrs.inclusion.PropInclusion;
@@ -61,6 +61,7 @@ import org.chocosolver.solver.Model;
 import org.chocosolver.solver.constraints.Constraint;
 import org.chocosolver.solver.constraints.Propagator;
 import org.chocosolver.solver.constraints.binary.PropGreaterOrEqualX_Y;
+import org.chocosolver.solver.exception.SolverException;
 import org.chocosolver.solver.variables.BoolVar;
 import org.chocosolver.solver.variables.IntVar;
 import org.chocosolver.solver.variables.SetVar;
@@ -486,7 +487,7 @@ public interface IGraphConstraintFactory {
 	 * @return a minimum degree constraint
 	 */
 	default Constraint minDegrees(UndirectedGraphVar g, int minDegree) {
-		return new Constraint("minDegrees", new PropNodeDegree_AtLeast_Incr(g, minDegree));
+		return new Constraint("minDegrees", new PropNodeDegreeAtLeastIncr(g, minDegree));
 	}
 
 	/**
@@ -499,7 +500,7 @@ public interface IGraphConstraintFactory {
 	 * @return a minimum degree constraint
 	 */
 	default Constraint minDegrees(UndirectedGraphVar g, int[] minDegrees) {
-		return new Constraint("minDegrees", new PropNodeDegree_AtLeast_Incr(g, minDegrees));
+		return new Constraint("minDegrees", new PropNodeDegreeAtLeastIncr(g, minDegrees));
 	}
 
 	/**
@@ -512,7 +513,7 @@ public interface IGraphConstraintFactory {
 	 * @return a maximum degree constraint
 	 */
 	default Constraint maxDegrees(UndirectedGraphVar g, int maxDegree) {
-		return new Constraint("maxDegrees", new PropNodeDegree_AtMost_Coarse(g, maxDegree));
+		return new Constraint("maxDegrees", new PropNodeDegreeAtMostCoarse(g, maxDegree));
 	}
 
 	/**
@@ -525,7 +526,7 @@ public interface IGraphConstraintFactory {
 	 * @return a maximum degree constraint
 	 */
 	default Constraint maxDegrees(UndirectedGraphVar g, int[] maxDegrees) {
-		return new Constraint("maxDegrees", new PropNodeDegree_AtMost_Coarse(g, maxDegrees));
+		return new Constraint("maxDegrees", new PropNodeDegreeAtMostCoarse(g, maxDegrees));
 	}
 
 	/**
@@ -539,7 +540,7 @@ public interface IGraphConstraintFactory {
 	 * @return a degree constraint
 	 */
 	default Constraint degrees(UndirectedGraphVar g, IntVar[] degrees) {
-		return new Constraint("degrees", new PropNodeDegree_Var(g, degrees));
+		return new Constraint("degrees", new PropNodeDegreeVar(g, degrees));
 	}
 
 	// inDegrees
@@ -554,7 +555,7 @@ public interface IGraphConstraintFactory {
 	 * @return a minimum inner degree constraint
 	 */
 	default Constraint minInDegrees(DirectedGraphVar g, int minDegree) {
-		return new Constraint("minInDegrees", new PropNodeDegree_AtLeast_Incr(g, Orientation.PREDECESSORS, minDegree));
+		return new Constraint("minInDegrees", new PropNodeDegreeAtLeastIncr(g, Orientation.PREDECESSORS, minDegree));
 	}
 
 	/**
@@ -567,7 +568,7 @@ public interface IGraphConstraintFactory {
 	 * @return a minimum inner degree constraint
 	 */
 	default Constraint minInDegrees(DirectedGraphVar g, int[] minDegrees) {
-		return new Constraint("minInDegrees", new PropNodeDegree_AtLeast_Incr(g, Orientation.PREDECESSORS, minDegrees));
+		return new Constraint("minInDegrees", new PropNodeDegreeAtLeastIncr(g, Orientation.PREDECESSORS, minDegrees));
 	}
 
 	/**
@@ -580,7 +581,7 @@ public interface IGraphConstraintFactory {
 	 * @return a maximum inner degree constraint
 	 */
 	default Constraint maxInDegrees(DirectedGraphVar g, int maxDegree) {
-		return new Constraint("maxInDegrees", new PropNodeDegree_AtMost_Coarse(g, Orientation.PREDECESSORS, maxDegree));
+		return new Constraint("maxInDegrees", new PropNodeDegreeAtMostCoarse(g, Orientation.PREDECESSORS, maxDegree));
 	}
 
 	/**
@@ -593,7 +594,7 @@ public interface IGraphConstraintFactory {
 	 * @return a maximum inner degree constraint
 	 */
 	default Constraint maxInDegrees(DirectedGraphVar g, int[] maxDegrees) {
-		return new Constraint("maxInDegrees", new PropNodeDegree_AtMost_Coarse(g, Orientation.PREDECESSORS, maxDegrees));
+		return new Constraint("maxInDegrees", new PropNodeDegreeAtMostCoarse(g, Orientation.PREDECESSORS, maxDegrees));
 	}
 
 	/**
@@ -607,7 +608,7 @@ public interface IGraphConstraintFactory {
 	 * @return a degree inner constraint
 	 */
 	default Constraint inDegrees(DirectedGraphVar g, IntVar[] degrees) {
-		return new Constraint("inDegrees", new PropNodeDegree_Var(g, Orientation.PREDECESSORS, degrees));
+		return new Constraint("inDegrees", new PropNodeDegreeVar(g, Orientation.PREDECESSORS, degrees));
 	}
 
 	// out-degrees
@@ -622,7 +623,7 @@ public interface IGraphConstraintFactory {
 	 * @return a minimum outer degree constraint
 	 */
 	default Constraint minOutDegrees(DirectedGraphVar g, int minDegree) {
-		return new Constraint("minOutDegrees", new PropNodeDegree_AtLeast_Incr(g, Orientation.SUCCESSORS, minDegree));
+		return new Constraint("minOutDegrees", new PropNodeDegreeAtLeastIncr(g, Orientation.SUCCESSORS, minDegree));
 	}
 
 	/**
@@ -635,7 +636,7 @@ public interface IGraphConstraintFactory {
 	 * @return a minimum outer degree constraint
 	 */
 	default Constraint minOutDegrees(DirectedGraphVar g, int[] minDegrees) {
-		return new Constraint("minOutDegrees", new PropNodeDegree_AtLeast_Incr(g, Orientation.SUCCESSORS, minDegrees));
+		return new Constraint("minOutDegrees", new PropNodeDegreeAtLeastIncr(g, Orientation.SUCCESSORS, minDegrees));
 	}
 
 	/**
@@ -648,7 +649,7 @@ public interface IGraphConstraintFactory {
 	 * @return a maximum outer degree constraint
 	 */
 	default Constraint maxOutDegrees(DirectedGraphVar g, int maxDegree) {
-		return new Constraint("maxOutDegrees", new PropNodeDegree_AtMost_Coarse(g, Orientation.SUCCESSORS, maxDegree));
+		return new Constraint("maxOutDegrees", new PropNodeDegreeAtMostCoarse(g, Orientation.SUCCESSORS, maxDegree));
 	}
 
 	/**
@@ -661,7 +662,7 @@ public interface IGraphConstraintFactory {
 	 * @return a outer maximum degree constraint
 	 */
 	default Constraint maxOutDegrees(DirectedGraphVar g, int[] maxDegrees) {
-		return new Constraint("maxOutDegrees", new PropNodeDegree_AtMost_Coarse(g, Orientation.SUCCESSORS, maxDegrees));
+		return new Constraint("maxOutDegrees", new PropNodeDegreeAtMostCoarse(g, Orientation.SUCCESSORS, maxDegrees));
 	}
 
 	/**
@@ -675,7 +676,7 @@ public interface IGraphConstraintFactory {
 	 * @return an outer degree constraint
 	 */
 	default Constraint outDegrees(DirectedGraphVar g, IntVar[] degrees) {
-		return new Constraint("outDegrees", new PropNodeDegree_Var(g, Orientation.SUCCESSORS, degrees));
+		return new Constraint("outDegrees", new PropNodeDegreeVar(g, Orientation.SUCCESSORS, degrees));
 	}
 
 
@@ -683,27 +684,9 @@ public interface IGraphConstraintFactory {
 	// CYCLE CONSTRAINTS
 	//***********************************************************************************
 
-
-	/**
-	 * g must form a Hamiltonian cycle
-	 * Implies that every vertex in [0,g.getNbMaxNodes()-1] is mandatory
-	 *
-	 * @param g an undirected graph variable
-	 * @return a hamiltonian cycle constraint
-	 */
+	@Deprecated
 	default Constraint hamiltonianCycle(UndirectedGraphVar g) {
-		int m = 0;
-		int n = g.getNbMaxNodes();
-		for (int i = 0; i < n; i++) {
-			m += g.getPotNeighOf(i).size();
-		}
-		m /= 2;
-		Propagator pMaxDeg = (m < 20 * n) ? new PropNodeDegree_AtMost_Incr(g, 2) : new PropNodeDegree_AtMost_Coarse(g, 2);
-		return new Constraint("hamiltonianCycle",
-				new PropNodeDegree_AtLeast_Incr(g, 2),
-				pMaxDeg,
-				new PropHamiltonianCycle(g)
-		);
+		throw new SolverException("Use a graph variable with all nodes mandatory and a cycle constraint instead");
 	}
 
 	/**
@@ -713,55 +696,29 @@ public interface IGraphConstraintFactory {
 	 * @return a cycle constraint
 	 */
 	default Constraint cycle(UndirectedGraphVar g) {
-		if (g.getMandatoryNodes().size() == g.getNbMaxNodes()) {
-			return hamiltonianCycle(g);
-		}
 		int m = 0;
 		int n = g.getNbMaxNodes();
 		for (int i = 0; i < n; i++) {
 			m += g.getPotNeighOf(i).size();
 		}
 		m /= 2;
-		Propagator pMaxDeg = (m < 20 * n) ? new PropNodeDegree_AtMost_Incr(g, 2) : new PropNodeDegree_AtMost_Incr(g, 2);
+		Propagator pMaxDeg = (m < 20 * n) ? new PropNodeDegreeAtMostIncr(g, 2) : new PropNodeDegreeAtMostIncr(g, 2);
 		return new Constraint("cycle",
-				new PropNodeDegree_AtLeast_Incr(g, 2),
+				new PropNodeDegreeAtLeastIncr(g, 2),
 				pMaxDeg,
 				new PropConnected(g),
 				new PropCycle(g)
 		);
 	}
 
-	/**
-	 * g must form a Hamiltonian circuit
-	 * Implies that every vertex in [0,g.getNbMaxNodes()-1] is mandatory
-	 * This constraint cannot be reified
-	 *
-	 * @param g a directed graph variable
-	 * @return a circuit constraint
-	 */
+	@Deprecated
 	default Constraint hamiltonianCircuit(DirectedGraphVar g) {
-		IntVar[] gint = _me().succInts(g);
-		return _me().circuit(gint, 0);
+		throw new SolverException("Use circuit constraint over IntVar[] instead");
 	}
 
-	/**
-	 * g must form a circuit
-	 *
-	 * @param g a directed graph variable
-	 * @return a circuit constraint
-	 */
+	@Deprecated
 	default Constraint circuit(DirectedGraphVar g) {
-		if (g.getMandatoryNodes().size() == g.getNbMaxNodes()) {
-			return hamiltonianCircuit(g);
-		}
-		return new Constraint("circuit",
-				new PropNodeDegree_AtLeast_Incr(g, Orientation.SUCCESSORS, 1),
-				new PropNodeDegree_AtLeast_Incr(g, Orientation.PREDECESSORS, 1),
-				new PropNodeDegree_AtMost_Incr(g, Orientation.SUCCESSORS, 1),
-				new PropNodeDegree_AtMost_Incr(g, Orientation.PREDECESSORS, 1),
-				new PropNbSCC(g, g.getModel().intVar(1)),
-				new PropCircuit(g)
-		);
+		throw new SolverException("Use subcircuit constraint over IntVar[] instead");
 	}
 
 	/**
@@ -798,6 +755,13 @@ public interface IGraphConstraintFactory {
 	/**
 	 * Creates a connectedness constraint which ensures that g is connected
 	 *
+	 * BEWARE : empty graphs or graph with 1 node are allowed (they are not disconnected...)
+	 * if one wants a graph with >= 2 nodes he should use the node number constraint (nbNodes)
+	 * connected only focuses on the graph structure to prevent two nodes not to be connected
+	 * if there is 0 or only 1 node, the constraint is therefore not violated
+	 *
+	 * The purpose of CP is to compose existing constraints, and nbNodes already exists
+	 *
 	 * @param g an undirected graph variable
 	 * @return A connectedness constraint which ensures that g is connected
 	 */
@@ -806,10 +770,11 @@ public interface IGraphConstraintFactory {
 	}
 
 	/**
-	 * Creates a connectedness constraint which ensures that g is connected
+	 * Creates a connectedness constraint which ensures that g is biconnected
+	 * Beware : should be used in addition to connected
 	 *
 	 * @param g an undirected graph variable
-	 * @return A connectedness constraint which ensures that g is connected
+	 * @return A connectedness constraint which ensures that g is biconnected
 	 */
 	default Constraint biconnected(UndirectedGraphVar g) {
 		return new Constraint("connected", new PropBiconnected(g));
@@ -823,8 +788,6 @@ public interface IGraphConstraintFactory {
 	 * @return A connectedness constraint which ensures that g has nb connected components
 	 */
 	default Constraint nbConnectedComponents(UndirectedGraphVar g, IntVar nb) {
-		if (nb.isInstantiatedTo(1)) return connected(g);
-		if (nb.isInstantiatedTo(2)) return connected(g);
 		return new Constraint("NbCC", new PropNbCC(g, nb));
 	}
 
@@ -933,8 +896,8 @@ public interface IGraphConstraintFactory {
 		nbPreds[root] = 0;
 		return new Constraint("directedTree"
 				, new PropArborescence(g, root)
-				, new PropNodeDegree_AtMost_Coarse(g, Orientation.PREDECESSORS, nbPreds)
-				, new PropNodeDegree_AtLeast_Incr(g, Orientation.PREDECESSORS, nbPreds)
+				, new PropNodeDegreeAtMostCoarse(g, Orientation.PREDECESSORS, nbPreds)
+				, new PropNodeDegreeAtLeastIncr(g, Orientation.PREDECESSORS, nbPreds)
 		);
 	}
 
@@ -947,7 +910,7 @@ public interface IGraphConstraintFactory {
 	 */
 	default Constraint directedForest(DirectedGraphVar g) {
 		return new Constraint("directedForest", new PropArborescences(g)
-				, new PropNodeDegree_AtMost_Coarse(g, Orientation.PREDECESSORS, 1)
+				, new PropNodeDegreeAtMostCoarse(g, Orientation.PREDECESSORS, 1)
 		);
 	}
 
@@ -967,35 +930,6 @@ public interface IGraphConstraintFactory {
 	 */
 	default Constraint reachability(DirectedGraphVar g, int root) {
 		return new Constraint("reachability_from_" + root, new PropReachability(g, root));
-	}
-
-	// directed path
-
-	/**
-	 * Creates a path constraint : g forms a path from node 'from' to node 'to'
-	 * Basic but fast propagation
-	 *
-	 * @param g    a directed graph variable
-	 * @param from an integer variable
-	 * @param to   an integer variable
-	 * @return a path constraint
-	 */
-	default Constraint path(DirectedGraphVar g, int from, int to) {
-		int n = g.getNbMaxNodes();
-		int[] succs = new int[n];
-		int[] preds = new int[n];
-		for (int i = 0; i < n; i++) {
-			succs[i] = preds[i] = 1;
-		}
-		succs[to] = preds[from] = 0;
-		Propagator[] props = new Propagator[]{
-				new PropNodeDegree_AtLeast_Coarse(g, Orientation.SUCCESSORS, succs)
-				, new PropNodeDegree_AtMost_Incr(g, Orientation.SUCCESSORS, succs)
-				, new PropNodeDegree_AtLeast_Coarse(g, Orientation.PREDECESSORS, preds)
-				, new PropNodeDegree_AtMost_Incr(g, Orientation.PREDECESSORS, preds)
-				, new PropPathNoCircuit(g)
-		};
-		return new Constraint("path", props);
 	}
 
 
@@ -1067,22 +1001,22 @@ public interface IGraphConstraintFactory {
 	/**
 	 * Constraint modeling the Traveling Salesman Problem
 	 *
-	 * @param GRAPHVAR   graph variable representing a Hamiltonian cycle
-	 * @param COSTVAR    variable representing the cost of the cycle
-	 * @param EDGE_COSTS cost matrix (should be symmetric)
-	 * @param LAGR_MODE  use the Lagrangian relaxation of the tsp
+	 * @param graphVar   graph variable representing a Hamiltonian cycle
+	 * @param costVar    variable representing the cost of the cycle
+	 * @param edgeCosts cost matrix (should be symmetric)
+	 * @param lagrMode  use the Lagrangian relaxation of the tsp
 	 *                   described by Held and Karp
 	 *                   {0:no Lagrangian relaxation,
 	 *                   1:Lagrangian relaxation (since root node),
 	 *                   2:Lagrangian relaxation but wait a first solution before running it}
 	 * @return a tsp constraint
 	 */
-	default Constraint tsp(UndirectedGraphVar GRAPHVAR, IntVar COSTVAR, int[][] EDGE_COSTS, int LAGR_MODE) {
-		Propagator[] props = ArrayUtils.append(hamiltonianCycle(GRAPHVAR).getPropagators(),
-				new Propagator[]{new PropCycleCostSimple(GRAPHVAR, COSTVAR, EDGE_COSTS)});
-		if (LAGR_MODE > 0) {
-			PropLagr_OneTree hk = new PropLagr_OneTree(GRAPHVAR, COSTVAR, EDGE_COSTS);
-			hk.waitFirstSolution(LAGR_MODE == 2);
+	default Constraint tsp(UndirectedGraphVar graphVar, IntVar costVar, int[][] edgeCosts, int lagrMode) {
+		Propagator[] props = ArrayUtils.append(cycle(graphVar).getPropagators(),
+				new Propagator[]{new PropCycleCostSimple(graphVar, costVar, edgeCosts)});
+		if (lagrMode > 0) {
+			PropLagrOneTree hk = new PropLagrOneTree(graphVar, costVar, edgeCosts);
+			hk.waitFirstSolution(lagrMode == 2);
 			props = ArrayUtils.append(props, new Propagator[]{hk});
 		}
 		return new Constraint("TSP", props);
@@ -1094,28 +1028,28 @@ public interface IGraphConstraintFactory {
 	 * <p>
 	 * BEWARE : assumes the channeling between GRAPH and DEGREES is already done
 	 *
-	 * @param GRAPH      an undirected graph variable
-	 * @param DEGREES    the degree of every vertex
-	 * @param COSTVAR    variable representing the cost of the mst
-	 * @param EDGE_COSTS cost matrix (should be symmetric)
-	 * @param LAGR_MODE  use the Lagrangian relaxation of the dcmst
+	 * @param graphVar      an undirected graph variable
+	 * @param degrees    the degree of every vertex
+	 * @param costVar    variable representing the cost of the mst
+	 * @param edgeCosts cost matrix (should be symmetric)
+	 * @param lagrMode  use the Lagrangian relaxation of the dcmst
 	 *                   {0:no Lagrangian relaxation,
 	 *                   1:Lagrangian relaxation (since root node),
 	 *                   2:Lagrangian relaxation but wait a first solution before running it}
 	 * @return a degree-constrained minimum spanning tree constraint
 	 */
-	default Constraint dcmst(UndirectedGraphVar GRAPH, IntVar[] DEGREES,
-							 IntVar COSTVAR, int[][] EDGE_COSTS,
-							 int LAGR_MODE) {
+	default Constraint dcmst(UndirectedGraphVar graphVar, IntVar[] degrees,
+							 IntVar costVar, int[][] edgeCosts,
+							 int lagrMode) {
 		Propagator[] props = ArrayUtils.append(
-				tree(GRAPH).getPropagators()
+				tree(graphVar).getPropagators()
 				, new Propagator[]{
-						new PropTreeCostSimple(GRAPH, COSTVAR, EDGE_COSTS)
-						, new PropMaxDegVarTree(GRAPH, DEGREES)
+						new PropTreeCostSimple(graphVar, costVar, edgeCosts)
+						, new PropMaxDegVarTree(graphVar, degrees)
 				}
 		);
-		if (LAGR_MODE > 0) {
-			PropLagr_DCMST_generic hk = new PropLagr_DCMST_generic(GRAPH, COSTVAR, DEGREES, EDGE_COSTS, LAGR_MODE == 2);
+		if (lagrMode > 0) {
+			PropGenericLagrDCMST hk = new PropGenericLagrDCMST(graphVar, costVar, degrees, edgeCosts, lagrMode == 2);
 			props = ArrayUtils.append(props, new Propagator[]{hk});
 		}
 		return new Constraint("dcmst", props);

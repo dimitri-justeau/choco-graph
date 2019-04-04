@@ -36,7 +36,6 @@ import org.chocosolver.solver.constraints.PropagatorPriority;
 import org.chocosolver.solver.exception.ContradictionException;
 import org.chocosolver.util.ESat;
 import org.chocosolver.util.objects.setDataStructures.ISet;
-import org.chocosolver.util.procedure.PairProcedure;
 
 import java.util.BitSet;
 
@@ -54,7 +53,6 @@ public class PropACyclic extends Propagator<GraphVar> {
 
 	private GraphVar g;
 	private GraphDeltaMonitor gdm;
-	private PairProcedure arcEnf;
 	private int n;
 	private BitSet rfFrom, rfTo;
 	private int[] fifo;
@@ -71,7 +69,6 @@ public class PropACyclic extends Propagator<GraphVar> {
 		this.rfFrom = new BitSet(n);
 		this.rfTo = new BitSet(n);
 		this.gdm = g.monitorDelta(this);
-		this.arcEnf = this::propagateIJ;
 	}
 
 	//***********************************************************************************
@@ -101,12 +98,12 @@ public class PropACyclic extends Propagator<GraphVar> {
 	@Override
 	public void propagate(int idx, int mask) throws ContradictionException {
 		gdm.freeze();
-		gdm.forEachArc(arcEnf, GraphEventType.ADD_ARC);
+		gdm.forEachArc(this::propagateIJ, GraphEventType.ADD_ARC);
 		gdm.unfreeze();
 	}
 
 
-	public void propagateIJ(int from, int to) throws ContradictionException {
+	private void propagateIJ(int from, int to) throws ContradictionException {
 		if (g.isDirected()) {
 			g.removeArc(to, from, this);
 		}
@@ -150,10 +147,8 @@ public class PropACyclic extends Propagator<GraphVar> {
 			if (rfTo.get(i)) {
 				ISet nei = g.getPotSuccOrNeighOf(i);
 				for (int j : nei) {
-					if (rfFrom.get(j)) {
-						if ((i != from || j != to) && (i != to || j != from)) {
-							g.removeArc(i, j, this);
-						}
+					if (rfFrom.get(j) && (i != from || j != to) && (i != to || j != from)) {
+						g.removeArc(i, j, this);
 					}
 				}
 			}

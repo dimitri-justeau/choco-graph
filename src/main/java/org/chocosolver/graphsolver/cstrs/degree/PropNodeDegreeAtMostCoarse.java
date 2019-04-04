@@ -25,94 +25,89 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.chocosolver.graphsolver.cstrs.cycles;
+package org.chocosolver.graphsolver.cstrs.degree;
 
-import org.chocosolver.graphsolver.variables.DirectedGraphVar;
-import org.chocosolver.graphsolver.variables.GraphEventType;
-import org.chocosolver.graphsolver.variables.delta.GraphDeltaMonitor;
-import org.chocosolver.memory.IEnvironment;
-import org.chocosolver.memory.IStateInt;
+import org.chocosolver.graphsolver.variables.*;
 import org.chocosolver.solver.constraints.Propagator;
 import org.chocosolver.solver.constraints.PropagatorPriority;
 import org.chocosolver.solver.exception.ContradictionException;
 import org.chocosolver.util.ESat;
+import org.chocosolver.util.objects.graphs.Orientation;
 import org.chocosolver.util.objects.setDataStructures.ISet;
-import org.chocosolver.util.procedure.PairProcedure;
 
 /**
- * Simple no-circuit constraint (from noCycle of Caseaux/Laburthe)
+ * Propagator that ensures that a node has at most N successors/predecessors/neighbors
  *
  * @author Jean-Guillaume Fages
  */
-public class PropPathNoCircuit extends Propagator<DirectedGraphVar> {
+public class PropNodeDegreeAtMostCoarse extends Propagator<GraphVar> {
 
 	//***********************************************************************************
 	// VARIABLES
 	//***********************************************************************************
 
-	private DirectedGraphVar g;
-	private GraphDeltaMonitor gdm;
-	private int n;
-	private PairProcedure arcEnforced;
-	private IStateInt[] origin, end, size;
+	private GraphVar g;
+	private int[] degrees;
+	private IncidentSet target;
 
 	//***********************************************************************************
 	// CONSTRUCTORS
 	//***********************************************************************************
 
-	/**
-	 * Ensures that graph has no circuit, with Caseaux/Laburthe/Pesant algorithm
-	 * runs in O(1) per instantiation event
-	 *
-	 * @param graph
-	 */
-	public PropPathNoCircuit(DirectedGraphVar graph) {
-		super(new DirectedGraphVar[]{graph}, PropagatorPriority.LINEAR, true);
+	public PropNodeDegreeAtMostCoarse(DirectedGraphVar graph, Orientation setType, int degree) {
+		this(graph, setType, buildArray(degree, graph.getNbMaxNodes()));
+	}
+
+	public PropNodeDegreeAtMostCoarse(DirectedGraphVar graph, Orientation setType, int[] degrees) {
+		super(new DirectedGraphVar[]{graph}, PropagatorPriority.BINARY, false);
 		g = graph;
-		gdm = g.monitorDelta(this);
-		this.n = g.getNbMaxNodes();
-		arcEnforced = new EnfArc();
-		origin = new IStateInt[n];
-		size = new IStateInt[n];
-		end = new IStateInt[n];
-		IEnvironment environment = graph.getEnvironment();
-		for (int i = 0; i < n; i++) {
-			origin[i] = environment.makeInt(i);
-			size[i] = environment.makeInt(1);
-			end[i] = environment.makeInt(i);
+		this.degrees = degrees;
+		switch (setType) {
+			case SUCCESSORS:
+				target = new IncidentSet.SuccOrNeighSet();
+				break;
+			case PREDECESSORS:
+				target = new IncidentSet.PredOrNeighSet();
+				break;
+			default:
+				throw new UnsupportedOperationException("wrong parameter: use either PREDECESSORS or SUCCESSORS");
 		}
 	}
 
+	public PropNodeDegreeAtMostCoarse(UndirectedGraphVar graph, int degree) {
+		this(graph, buildArray(degree, graph.getNbMaxNodes()));
+	}
+
+	public PropNodeDegreeAtMostCoarse(final UndirectedGraphVar graph, int[] degrees) {
+		super(new UndirectedGraphVar[]{graph}, PropagatorPriority.BINARY, false);
+		target = new IncidentSet.SuccOrNeighSet();
+		g = graph;
+		this.degrees = degrees;
+	}
+
+	private static int[] buildArray(int degree, int n) {
+		int[] degrees = new int[n];
+		for (int i = 0; i < n; i++) {
+			degrees[i] = degree;
+		}
+		return degrees;
+	}
+
 	//***********************************************************************************
-	// METHODS
+	// PROPAGATIONS
 	//***********************************************************************************
 
 	@Override
 	public void propagate(int evtmask) throws ContradictionException {
-		for (int i = 0; i < n; i++) {
-			end[i].set(i);
-			origin[i].set(i);
-			size[i].set(1);
+		ISet act = g.getPotentialNodes();
+		for (int node : act) {
+			checkAtMost(node);
 		}
-		for (int i = 0; i < n; i++) {
-			ISet succs = g.getMandSuccOf(i);
-			if (succs.size() > 0) {
-				if (succs.size() > 1) {
-					fails();
-				} else {
-					enforce(i, g.getMandSuccOf(i).iterator().next());
-				}
-			}
-		}
-		gdm.unfreeze();
 	}
 
-	@Override
-	public void propagate(int idxVarInProp, int mask) throws ContradictionException {
-		gdm.freeze();
-		gdm.forEachArc(arcEnforced, GraphEventType.ADD_ARC);
-		gdm.unfreeze();
-	}
+	//***********************************************************************************
+	// INFO
+	//***********************************************************************************
 
 	@Override
 	public int getPropagationConditions(int vIdx) {
@@ -121,31 +116,40 @@ public class PropPathNoCircuit extends Propagator<DirectedGraphVar> {
 
 	@Override
 	public ESat isEntailed() {
-		System.out.println("[WARNING] " + this.getClass().getSimpleName() + ".isEntail() is not implemented yet " +
-				"and returns true by default. Please do not reify this constraint ");
-		return ESat.TRUE;
-	}
-
-	private void enforce(int i, int j) throws ContradictionException {
-		int last = end[j].get();
-		int start = origin[i].get();
-		if (origin[j].get() != j) {
-			fails();
+		ISet act = g.getMandatoryNodes();
+		for (int i : act) {
+			if (target.getPotSet(g, i).size() > degrees[i]) {
+				return ESat.FALSE;
+			}
 		}
-		g.removeArc(last, start, this);
-		origin[last].set(start);
-		end[start].set(last);
-		size[start].add(size[j].get());
+		if (!g.isInstantiated()) {
+			return ESat.UNDEFINED;
+		}
+		return ESat.TRUE;
 	}
 
 	//***********************************************************************************
 	// PROCEDURES
 	//***********************************************************************************
 
-	private class EnfArc implements PairProcedure {
-		@Override
-		public void execute(int i, int j) throws ContradictionException {
-			enforce(i, j);
+	/**
+	 * When a node has more than N successors/predecessors/neighbors then it must be removed,
+	 * (which results in a failure)
+	 * If it has N successors/predecessors/neighbors in the kernel then other incident edges
+	 * should be removed
+	 */
+	private void checkAtMost(int i) throws ContradictionException {
+		ISet ker = target.getMandSet(g, i);
+		ISet env = target.getPotSet(g, i);
+		int size = ker.size();
+		if (size > degrees[i]) {
+			g.removeNode(i, this);
+		} else if (size == degrees[i] && env.size() > size) {
+			for (int other : env) {
+				if (!ker.contains(other)) {
+					target.remove(g, i, other, this);
+				}
+			}
 		}
 	}
 }
