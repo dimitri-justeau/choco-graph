@@ -40,7 +40,7 @@ import org.chocosolver.util.objects.setDataStructures.ISet;
  *
  * @author Jean-Guillaume Fages
  */
-public class PropNodeDegree_AtMost_Coarse extends Propagator<GraphVar> {
+public class PropNodeDegreeAtLeastCoarse extends Propagator<GraphVar> {
 
 	//***********************************************************************************
 	// VARIABLES
@@ -54,11 +54,11 @@ public class PropNodeDegree_AtMost_Coarse extends Propagator<GraphVar> {
 	// CONSTRUCTORS
 	//***********************************************************************************
 
-	public PropNodeDegree_AtMost_Coarse(DirectedGraphVar graph, Orientation setType, int degree) {
+	public PropNodeDegreeAtLeastCoarse(DirectedGraphVar graph, Orientation setType, int degree) {
 		this(graph, setType, buildArray(degree, graph.getNbMaxNodes()));
 	}
 
-	public PropNodeDegree_AtMost_Coarse(DirectedGraphVar graph, Orientation setType, int[] degrees) {
+	public PropNodeDegreeAtLeastCoarse(DirectedGraphVar graph, Orientation setType, int[] degrees) {
 		super(new DirectedGraphVar[]{graph}, PropagatorPriority.BINARY, false);
 		g = graph;
 		this.degrees = degrees;
@@ -70,15 +70,15 @@ public class PropNodeDegree_AtMost_Coarse extends Propagator<GraphVar> {
 				target = new IncidentSet.PredOrNeighSet();
 				break;
 			default:
-				throw new UnsupportedOperationException("wrong parameter: use either PREDECESSORS or SUCCESSORS");
+				throw new UnsupportedOperationException();
 		}
 	}
 
-	public PropNodeDegree_AtMost_Coarse(UndirectedGraphVar graph, int degree) {
+	public PropNodeDegreeAtLeastCoarse(UndirectedGraphVar graph, int degree) {
 		this(graph, buildArray(degree, graph.getNbMaxNodes()));
 	}
 
-	public PropNodeDegree_AtMost_Coarse(final UndirectedGraphVar graph, int[] degrees) {
+	public PropNodeDegreeAtLeastCoarse(UndirectedGraphVar graph, int[] degrees) {
 		super(new UndirectedGraphVar[]{graph}, PropagatorPriority.BINARY, false);
 		target = new IncidentSet.SuccOrNeighSet();
 		g = graph;
@@ -99,9 +99,8 @@ public class PropNodeDegree_AtMost_Coarse extends Propagator<GraphVar> {
 
 	@Override
 	public void propagate(int evtmask) throws ContradictionException {
-		ISet act = g.getPotentialNodes();
-		for (int node : act) {
-			checkAtMost(node);
+		for (int node : g.getPotentialNodes()) {
+			checkAtLeast(node);
 		}
 	}
 
@@ -111,14 +110,14 @@ public class PropNodeDegree_AtMost_Coarse extends Propagator<GraphVar> {
 
 	@Override
 	public int getPropagationConditions(int vIdx) {
-		return GraphEventType.ADD_ARC.getMask();
+		return GraphEventType.REMOVE_ARC.getMask() + GraphEventType.ADD_NODE.getMask();
 	}
 
 	@Override
 	public ESat isEntailed() {
 		ISet act = g.getMandatoryNodes();
 		for (int i : act) {
-			if (target.getPotSet(g, i).size() > degrees[i]) {
+			if (target.getPotSet(g, i).size() < degrees[i]) {
 				return ESat.FALSE;
 			}
 		}
@@ -132,23 +131,15 @@ public class PropNodeDegree_AtMost_Coarse extends Propagator<GraphVar> {
 	// PROCEDURES
 	//***********************************************************************************
 
-	/**
-	 * When a node has more than N successors/predecessors/neighbors then it must be removed,
-	 * (which results in a failure)
-	 * If it has N successors/predecessors/neighbors in the kernel then other incident edges
-	 * should be removed
-	 */
-	private void checkAtMost(int i) throws ContradictionException {
+	private void checkAtLeast(int i) throws ContradictionException {
+		ISet nei = target.getPotSet(g, i);
 		ISet ker = target.getMandSet(g, i);
-		ISet env = target.getPotSet(g, i);
-		int size = ker.size();
-		if (size > degrees[i]) {
+		int size = nei.size();
+		if (size < degrees[i]) {
 			g.removeNode(i, this);
-		} else if (size == degrees[i] && env.size() > size) {
-			for (int other : env) {
-				if (!ker.contains(other)) {
-					target.remove(g, i, other, this);
-				}
+		} else if (size == degrees[i] && g.getMandatoryNodes().contains(i) && ker.size() < size) {
+			for (int s : nei) {
+				target.enforce(g, i, s, this);
 			}
 		}
 	}
