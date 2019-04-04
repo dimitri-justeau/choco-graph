@@ -60,36 +60,24 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
-    
+
     <scm>
         <connection>scm:git:git@github.com:chocoteam/choco-graph.git</connection>
         <url>scm:git:git://github.com/chocoteam/choco-graph</url>
         <developerConnection>scm:git:git@github.com:chocoteam/choco-graph.git</developerConnection>
         <tag>HEAD</tag>
     </scm>
-    
+
     <prerequisites>
         <maven>3.2.3</maven>
     </prerequisites>
 
-    <repositories>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
-    </repositories>
-
     <dependencies>
-        <!--<dependency>-->
-            <!--<groupId>org.choco-solver</groupId>-->
-            <!--<artifactId>choco-solver</artifactId>-->
-            <!--<version>4.0.9-SNAPSHOT</version>-->
-            <!--<scope>compile</scope>-->
-        <!--</dependency>-->
         <dependency>
-            <groupId>com.github.chocoteam</groupId>
+            <groupId>org.choco-solver</groupId>
             <artifactId>choco-solver</artifactId>
-            <version>master</version>
+            <version>4.10.0</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.testng</groupId>

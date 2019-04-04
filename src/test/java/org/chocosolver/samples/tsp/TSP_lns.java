@@ -36,9 +36,8 @@ import org.chocosolver.solver.Solution;
 import org.chocosolver.solver.Solver;
 import org.chocosolver.solver.exception.ContradictionException;
 import org.chocosolver.solver.search.limits.FailCounter;
-import org.chocosolver.solver.search.loop.lns.neighbors.INeighbor;
+import org.chocosolver.solver.search.loop.lns.neighbors.Neighbor;
 import org.chocosolver.solver.search.strategy.decision.Decision;
-import org.chocosolver.solver.search.strategy.decision.DecisionPath;
 import org.chocosolver.solver.variables.IntVar;
 import org.chocosolver.util.objects.graphs.UndirectedGraph;
 import org.chocosolver.util.objects.setDataStructures.ISet;
@@ -109,7 +108,7 @@ public class TSP_lns {
 		solver.limitTime(LIMIT+"s");
 
 		// LNS (relaxes consecutive edges)
-		INeighbor LNS = new SubpathLNS(graph);
+		Neighbor LNS = new SubpathLNS(graph);
 		solver.setLNS(LNS,new FailCounter(model,30));
 
 		model.setObjective(Model.MINIMIZE, totalCost);
@@ -149,7 +148,7 @@ public class TSP_lns {
 	 * Object describing which edges to freeze and which others to relax in the LNS
 	 * Relaxes a (sub)path of the previous solution (freezes the rest)
 	 */
-	private class SubpathLNS implements INeighbor{
+	private class SubpathLNS extends Neighbor {
 
 		Random rd = new Random(0);
 		int n, nbRL;
@@ -159,6 +158,7 @@ public class TSP_lns {
 		UndirectedGraphVar graph;
 
 		protected SubpathLNS(UndirectedGraphVar graph) {
+			super(new IntVar[]{});
 			this.graph = graph;
 			this.n = graph.getNbMaxNodes();
 			this.solution = new UndirectedGraph(n,SetType.LINKED_LIST,true);
@@ -180,7 +180,7 @@ public class TSP_lns {
 		}
 
 		@Override
-		public void fixSomeVariables(DecisionPath decisionPath) {
+		public void fixSomeVariables() throws ContradictionException {
 			metaDec.free();
 			// relaxes a sub-path (a set of consecutive edges in a solution)
 			int i1 = rd.nextInt(n);
@@ -192,6 +192,7 @@ public class TSP_lns {
 			}
 			for(int k=0;k<n-nbFreeEdges;k++){
 				metaDec.add(i1,i2);
+				graph.enforceArc(i1, i2, this);
 				int i3 = -1;
 				for(int z : solution.getNeighOf(i2)) {
 					if (z != i1) {
@@ -204,7 +205,6 @@ public class TSP_lns {
 				i2 = i3;
 			}
 			metaDec.setRefutable(false);
-			decisionPath.pushDecision(metaDec);
 		}
 
 		@Override

@@ -33,7 +33,6 @@ import org.chocosolver.graphsolver.variables.GraphVar;
 import org.chocosolver.graphsolver.variables.IGraphVarFactory;
 import org.chocosolver.solver.DefaultSettings;
 import org.chocosolver.solver.Model;
-import org.chocosolver.solver.Settings;
 import org.chocosolver.solver.search.strategy.Search;
 import org.chocosolver.solver.search.strategy.strategy.AbstractStrategy;
 import org.chocosolver.solver.variables.Variable;
